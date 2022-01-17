@@ -2,24 +2,32 @@ package rc.bootsecurity.config;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;
+import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
+import org.springframework.security.web.authentication.www.BasicAuthenticationEntryPoint;
+import rc.bootsecurity.dao.UserRepository;
 import rc.bootsecurity.service.UserPrincipalDetailsService;
 
 @EnableWebSecurity
 public class SecurityConfiguration extends WebSecurityConfigurerAdapter {
 
     private UserPrincipalDetailsService userPrincipalDetailsService;
+    private UserRepository userRepository;
+
+    //private BasicAuthenticationEntryPoint authenticationEntryPoint;
 
     @Autowired
-    public SecurityConfiguration(UserPrincipalDetailsService userPrincipalDetailsService) {
+    public SecurityConfiguration(UserPrincipalDetailsService userPrincipalDetailsService, UserRepository userRepository) {
         this.userPrincipalDetailsService = userPrincipalDetailsService;
+        this.userRepository = userRepository;
+        //this.authenticationEntryPoint = basicAuthenticationEntryPoint;
     }
 
     @Override
@@ -30,8 +38,22 @@ public class SecurityConfiguration extends WebSecurityConfigurerAdapter {
     @Override
     protected void configure(HttpSecurity http) throws Exception {
         http
+                //while using jwt tokens we don't need csrf protection and session management
+                .csrf().disable()
+                .sessionManagement().sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+                .and()
+                //add jwt filters
+                .addFilter(new JwtAuthenticationFilter(authenticationManager()))
+                .addFilter(new JwtAuthorizationFilter(authenticationManager(), this.userRepository))
                 .authorizeRequests()
-                .antMatchers("/profile/**").authenticated()
+                // configure access rules
+                .antMatchers(HttpMethod.POST, "/login").permitAll()
+                .antMatchers("/api/public/management/*").hasRole("MANAGER")
+                .antMatchers("/api/public/admin/*").hasRole("ADMIN")
+                .anyRequest().authenticated();
+
+
+                /*.antMatchers("/profile/**").authenticated()
                 .antMatchers("/admin/**").hasRole("ADMIN")
                 .antMatchers("/management/**").hasAnyRole("ADMIN","MANAGER")
                 .antMatchers("/api/public/test1").hasAuthority("ACCESS_TEST1")
@@ -48,7 +70,7 @@ public class SecurityConfiguration extends WebSecurityConfigurerAdapter {
                 .logoutRequestMatcher(new AntPathRequestMatcher("/logout"))
                 .logoutSuccessUrl("/index")
                 .and()
-                .rememberMe().tokenValiditySeconds(2592000).key("secured").rememberMeParameter("checkRememberMe");
+                .rememberMe().tokenValiditySeconds(2592000).key("secured").rememberMeParameter("checkRememberMe");*/
     }
 
     @Bean
