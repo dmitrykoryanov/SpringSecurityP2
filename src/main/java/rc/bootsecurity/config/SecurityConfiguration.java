@@ -1,6 +1,8 @@
 package rc.bootsecurity.config;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
+import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -8,26 +10,21 @@ import org.springframework.security.config.annotation.web.configuration.WebSecur
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
+import rc.bootsecurity.service.UserPrincipalDetailsService;
 
 @EnableWebSecurity
 public class SecurityConfiguration extends WebSecurityConfigurerAdapter {
 
+    private UserPrincipalDetailsService userPrincipalDetailsService;
+
+    @Autowired
+    public SecurityConfiguration(UserPrincipalDetailsService userPrincipalDetailsService) {
+        this.userPrincipalDetailsService = userPrincipalDetailsService;
+    }
+
     @Override
     protected void configure(AuthenticationManagerBuilder auth) throws Exception {
-
-        auth
-                .inMemoryAuthentication()
-                .withUser("admin")
-                .password(passwordEncoder().encode("admin"))
-                .roles("ADMIN").authorities("ACCESS_TEST1", "ACCESS_TEST2")
-                .and()
-                .withUser("dmitry")
-                .password(passwordEncoder().encode("koryanov"))
-                .roles("USER")
-                .and()
-                .withUser("manager")
-                .password(passwordEncoder().encode("manager"))
-                .roles("MANAGER").authorities("ACCESS_TEST1");
+        auth.authenticationProvider(daoAuthenticationProvider());
     }
 
     @Override
@@ -40,15 +37,30 @@ public class SecurityConfiguration extends WebSecurityConfigurerAdapter {
                 .antMatchers("/api/public/test1").hasAuthority("ACCESS_TEST1")
                 .antMatchers("/api/public/test2").hasAuthority("ACCESS_TEST2")
                 .antMatchers("/api/public/users").hasRole("ADMIN")
-                //.antMatchers("/**").permitAll()
-                //.anyRequest()
-                //.authenticated()
                 .and()
-                .httpBasic();
-                /*.and()
+                .formLogin()
+                .loginPage("/login").permitAll()
+                .loginProcessingUrl("/signin")
+                .usernameParameter("txtUsername")
+                .passwordParameter("txtPassword")
+                .and()
                 .logout()
                 .logoutRequestMatcher(new AntPathRequestMatcher("/logout"))
-                .logoutSuccessUrl("/index");*/
+                .logoutSuccessUrl("/index")
+                .and()
+                .rememberMe().tokenValiditySeconds(2592000).key("secured").rememberMeParameter("checkRememberMe");
+    }
+
+    @Bean
+    DaoAuthenticationProvider daoAuthenticationProvider(){
+
+        DaoAuthenticationProvider daoAuthenticationProvider = new DaoAuthenticationProvider();
+
+        daoAuthenticationProvider.setPasswordEncoder(passwordEncoder());
+        daoAuthenticationProvider.setUserDetailsService(userPrincipalDetailsService);
+        daoAuthenticationProvider.setHideUserNotFoundExceptions(false);
+
+        return daoAuthenticationProvider;
     }
 
     @Bean

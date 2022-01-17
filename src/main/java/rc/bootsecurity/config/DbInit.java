@@ -16,7 +16,7 @@ public class DbInit implements CommandLineRunner {
     private UserRepository userRepository;
     private PasswordEncoder passwordEncoder;
 
-    //@Autowired
+    @Autowired
     public DbInit(UserRepository userRepository, PasswordEncoder passwordEncoder) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
@@ -25,7 +25,7 @@ public class DbInit implements CommandLineRunner {
     @Override
     public void run(String... args) throws Exception {
 
-        User dmitry = new User("dmitry","koryanov","USER","");
+        User dmitry = new User("dmitry",passwordEncoder.encode("koryanov"),"USER","");
         User admin = new User("admin",passwordEncoder.encode("admin"),"ADMIN","ACCESS_TEST1,ACCESS_TEST2");
         User manager = new User("manager",passwordEncoder.encode("manager"),"MANAGER","ACCESS_TEST1");
 
